@@ -26,13 +26,29 @@ int initPort(termios *tty) {
     tty->c_cflag |= CS8;     // 8 data bits
     tty->c_cflag &= ~CRTSCTS; // No flow control
     tty->c_cflag |= CREAD | CLOCAL; // Enable reading and ignore modem control lines
+    tty->c_cc[VTIME] = 5;    // Wait for up to 500 milliseconds returning as soon as any data is received.
+    tty->c_cc[VMIN] = 0;
 
     tcsetattr(serial_port, TCSANOW, tty);
 
     return serial_port;
 }
 
-int writePortByte(int serialPort, const char *message) {
+// int writePortByte(int serialPort, const char *message) {
+//     int bytes_written = write(serialPort, message, strlen(message));
+
+//     if (bytes_written == -1) {
+//         std::cerr << "Error writing to the serial port" << std::endl;
+//         close(serialPort);
+//         return -1;
+//     }
+
+//     std::cout << "write: " << message << bytes_written << std::endl;
+//     return bytes_written;
+// }
+
+
+int writePortByte(int serialPort, char message[]) {
     int bytes_written = write(serialPort, message, strlen(message));
 
     if (bytes_written == -1) {
@@ -47,14 +63,40 @@ int writePortByte(int serialPort, const char *message) {
 
 int readPortByte(int serialPort) {
     char readBuff[256];
-    int readBytes = read(serialPort, &readBuff, sizeof(readBuff));
-    if (readBytes == -1) {
+    char currChar;
+    int bytesRead;
+    bytesRead = read(serialPort, &readBuff, sizeof(readBuff));
+    if (bytesRead == -1) {
         std::cerr << "Error reading serial port" << std::endl;
         return -1;
     }
 
     std::cout << "Read: " << readBuff << std::endl;
-    return readBytes;
+    return bytesRead;
+}
+
+int setPosition(int serialPort) {
+    char motorCommand[14];
+
+    motorCommand[0] = 0x3e;
+	motorCommand[1] = 0xa3;
+	motorCommand[2] = 0x01;
+	motorCommand[3] = 0x08;
+	motorCommand[4] = 0xe5;
+	motorCommand[5] = 0xA0;	
+	motorCommand[6] = 0x8c;	
+	motorCommand[7] = 0x00;
+	motorCommand[8] = 0x00;
+    motorCommand[9] = 0x00;	
+	motorCommand[10] = 0x00;	
+	motorCommand[11] = 0x00;
+	motorCommand[12] = 0x00;
+	motorCommand[13] = 0x12;	
+
+    int writeBytes = writePortByte(serialPort, motorCommand);
+
+    return writeBytes;
+
 }
 
 int main() {
@@ -65,9 +107,14 @@ int main() {
         return 1;
     }
     
-    const char* message = "Bello, Serial Port!\n";
-    int bytesWritten = writePortByte(serialPort, message);
-    if (bytesWritten == -1) {
+    // char message[25] = "BelloSerialPort!\n";
+    // int writeBytes = writePortByte(serialPort, message);
+    // if (writeBytes == -1) {
+    //     return 1;
+    // }
+
+    int writeBytes = setPosition(serialPort);
+    if (writeBytes == -1) {
         return 1;
     }
 
